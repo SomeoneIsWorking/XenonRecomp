@@ -64,6 +64,10 @@ struct Recompiler
 
     bool Recompile(const Function& fn);
 
+    // Instructions the recompiler had no implementation for. These emit a trap
+    // into the output instead of nothing, so they can never silently miscompile.
+    size_t unrecognizedInstructionCount{};
+
     void Recompile(const std::filesystem::path& headerFilePath);
 
     void SaveCurrentOutData(const std::string_view& name = std::string_view());

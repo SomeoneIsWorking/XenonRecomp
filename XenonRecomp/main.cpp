@@ -42,6 +42,13 @@ int main(int argc, char* argv[])
             ;
 
         recompiler.Recompile(headerFilePath);
+
+        if (recompiler.unrecognizedInstructionCount != 0)
+        {
+            fmt::println("ERROR: {} instruction(s) had no implementation and were replaced with traps.",
+                recompiler.unrecognizedInstructionCount);
+            return EXIT_FAILURE;
+        }
     }
     else
     {
