@@ -341,6 +341,19 @@ Image Xex2LoadImage(const uint8_t* data, size_t dataSize)
 
                     memcpy(originalThunk, thunk, sizeof(thunk));
                 }
+                else
+                {
+                    // A variable import. The slot still holds its ordinal record,
+                    // which is not an address -- the game will fault the moment it
+                    // dereferences one. Only the runtime can supply the real
+                    // address, so record it for the runtime to resolve.
+                    auto name = names->find(originalData->originalData.ordinal);
+                    image.importVariables.push_back({
+                        name != names->end() ? name->second : std::string{},
+                        std::string(stringTable[i]),
+                        descriptors[im].firstThunk,
+                        originalData->originalData.ordinal });
+                }
             }
             library = (Xex2ImportLibrary*)((char*)(library + 1) + library->numberOfImports * sizeof(Xex2ImportDescriptor));
         }

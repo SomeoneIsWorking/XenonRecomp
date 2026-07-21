@@ -1,9 +1,26 @@
 #pragma once
 #include <memory>
 #include <string>
+#include <vector>
 #include <set>
 #include <section.h>
 #include "symbol_table.h"
+
+/**
+ * \brief An imported *variable* rather than an imported function.
+ *
+ * The loader cannot synthesise a stub for these the way it can for functions:
+ * the thunk slot has to end up holding the address of the real variable, which
+ * only the runtime can decide. Recording them here lets the runtime resolve
+ * them instead of leaving the game to dereference an unresolved ordinal record.
+ */
+struct ImportVariable
+{
+    std::string name{};     // "__imp__XexExecutableModuleHandle", or empty if the ordinal is unknown
+    std::string library{};  // "xboxkrnl.exe", "xam.xex", ...
+    uint32_t thunkAddress{};
+    uint32_t ordinal{};
+};
 
 struct Image
 {
@@ -14,6 +31,7 @@ struct Image
     size_t entry_point{};
     std::set<Section, SectionComparer> sections{};
     SymbolTable symbols{};
+    std::vector<ImportVariable> importVariables{};
 
     /**
      * \brief Map data to image by RVA

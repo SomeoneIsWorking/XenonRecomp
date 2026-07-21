@@ -1329,12 +1329,13 @@ bool Recompiler::Recompile(
         break;
 
     case PPC_INST_MULHD:
-        println("\t{}.s64 = (__int128({}.s64) * __int128({}.s64)) >> 64;", r(insn.operands[0]), r(insn.operands[1]), r(insn.operands[2]));
+        println("\t{}.s64 = (__int128_t({}.s64) * __int128_t({}.s64)) >> 64;", r(insn.operands[0]), r(insn.operands[1]), r(insn.operands[2]));
         break;
 
     case PPC_INST_MULHDU:
-        println("\t{}.u64 = (unsigned __int128({}.u64) * unsigned __int128({}.u64)) >> 64;", r(insn.operands[0]), r(insn.operands[1]), r(insn.operands[2]));
+        println("\t{}.u64 = (__uint128_t({}.u64) * __uint128_t({}.u64)) >> 64;", r(insn.operands[0]), r(insn.operands[1]), r(insn.operands[2]));
         break;
+
     case PPC_INST_MULHW:
         println("\t{}.s64 = (int64_t({}.s32) * int64_t({}.s32)) >> 32;", r(insn.operands[0]), r(insn.operands[1]), r(insn.operands[2]));
         break;
