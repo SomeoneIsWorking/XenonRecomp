@@ -868,7 +868,14 @@ bool Recompiler::Recompile(
         break;
 
     case PPC_INST_EIEIO:
-        // no op
+        // Orders stores to caching-inhibited memory. Costs nothing on x86-64
+        // beyond blocking the compiler from reordering across it.
+        println("\t__atomic_thread_fence(__ATOMIC_ACQ_REL);");
+        break;
+
+    case PPC_INST_ISYNC:
+        // Paired with a preceding branch this forms an acquire.
+        println("\t__atomic_thread_fence(__ATOMIC_ACQUIRE);");
         break;
 
     case PPC_INST_EQV:
@@ -1236,7 +1243,10 @@ bool Recompiler::Recompile(
         break;
 
     case PPC_INST_LWSYNC:
-        // no op
+        // Orders everything except StoreLoad, which is exactly acq_rel. x86-64
+        // gives this for free, so it emits no instruction -- but it still stops
+        // Clang reordering across it, which volatile accesses alone do not.
+        println("\t__atomic_thread_fence(__ATOMIC_ACQ_REL);");
         break;
 
     case PPC_INST_LWZ:
@@ -1746,7 +1756,10 @@ bool Recompiler::Recompile(
         break;
 
     case PPC_INST_SYNC:
-        // no op
+        // The heavyweight barrier, and the reason these cannot all stay no-ops:
+        // it orders StoreLoad, which x86-64's TSO does not provide. Emitting
+        // nothing here silently breaks any store-then-load handshake.
+        println("\t__atomic_thread_fence(__ATOMIC_SEQ_CST);");
         break;
 
     case PPC_INST_TDLGEI:
