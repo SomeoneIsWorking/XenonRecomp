@@ -5,6 +5,7 @@
 #error "ppc_config.h must be included before ppc_context.h"
 #endif
 
+#include <chrono>
 #include <climits>
 #include <cmath>
 #include <csetjmp>
@@ -714,5 +715,28 @@ inline uint64_t __rdtsc()
 #elif !defined(__x86_64__) && !defined(_M_X64)
 #   error "Missing implementation for __rdtsc()"
 #endif
+
+// The Xenon time base, as mftb reads it, runs at 49.875 MHz -- a fixed rate
+// tied to the console's clock, not to core frequency. Returning __rdtsc()
+// directly makes it advance at whatever the host's TSC does, roughly 3 GHz, so
+// every guest conversion from time-base ticks to real time is off by around
+// seventy times. Titles use mftb for spin-wait bounds, frame pacing and
+// profiling, and a rate that wrong is not a scaling nuisance: a loop bounded
+// in ticks exits far too early, which reads as the thing it waited for never
+// having happened.
+//
+// A steady_clock read is a vDSO call with no syscall, which is affordable even
+// inside a spin loop, and it is monotonic -- mftb must never go backwards.
+#define PPC_TIME_BASE_FREQUENCY 49875000ull
+
+inline uint64_t __ppc_time_base()
+{
+    const uint64_t nanoseconds = uint64_t(std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count());
+
+    // Widened so the multiply cannot overflow before the divide; at this rate a
+    // 64-bit tick count still covers over eleven thousand years.
+    return uint64_t((__uint128_t(nanoseconds) * PPC_TIME_BASE_FREQUENCY) / 1000000000ull);
+}
 
 #endif

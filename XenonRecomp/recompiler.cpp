@@ -324,24 +324,39 @@ void Recompiler::ExtendFunctionsOverSwitchTables()
 
         it->size = end - it->base;
         ++extendedSwitchFunctionCount;
+
+        // Widen this function's symbol in place, keeping its name: the
+        // save/restore helpers are registered as function symbols too, so the
+        // table must not be rebuilt wholesale.
+        auto symbol = image.symbols.find(it->base);
+        if (symbol != image.symbols.end() && symbol->address == it->base)
+        {
+            Symbol widened = *symbol;
+            widened.size = it->size;
+            image.symbols.erase(symbol);
+            image.symbols.emplace(widened);
+        }
     }
 
     std::vector<Function> kept;
     kept.reserve(functions.size());
     for (size_t i = 0; i < functions.size(); i++)
     {
-        if (!absorbed[i])
-            kept.push_back(functions[i]);
+        if (absorbed[i])
+        {
+            // Drop the symbol the linear scan invented for this stub, or it
+            // would reintroduce the split the extension just healed.
+            auto symbol = image.symbols.find(functions[i].base);
+            if (symbol != image.symbols.end() && symbol->address == functions[i].base &&
+                symbol->type == Symbol_Function)
+            {
+                image.symbols.erase(symbol);
+            }
+            continue;
+        }
+        kept.push_back(functions[i]);
     }
     functions = std::move(kept);
-
-    // The symbol table drove the extents above, so rebuild the function
-    // symbols from the merged list; a stale symbol would reintroduce the split.
-    for (auto it = image.symbols.begin(); it != image.symbols.end(); )
-        it = (it->type == Symbol_Function) ? image.symbols.erase(it) : std::next(it);
-
-    for (const auto& fn : functions)
-        image.symbols.emplace(fmt::format("sub_{:X}", fn.base), fn.base, fn.size, Symbol_Function);
 }
 
 bool Recompiler::Recompile(
@@ -1391,7 +1406,7 @@ bool Recompiler::Recompile(
         break;
 
     case PPC_INST_MFTB:
-        println("\t{}.u64 = __rdtsc();", r(insn.operands[0]));
+        println("\t{}.u64 = __ppc_time_base();", r(insn.operands[0]));
         break;
 
     case PPC_INST_MR:
