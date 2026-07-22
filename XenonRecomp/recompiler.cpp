@@ -722,7 +722,15 @@ bool Recompiler::Recompile(
     case PPC_INST_BCTR:
         if (switchTable != config.switchTables.end())
         {
-            println("\tswitch ({}.u64) {{", r(switchTable->second.r));
+            // The index is 32-bit. The guest's own table load computes its
+            // offset with rlwinm and adds it with lwzx, both of which work on
+            // the low word, so whatever is left in the upper half of the
+            // register is not part of the index. Switching on .u64 let stale
+            // upper bits through: in Gears an index of 0x43 arrived as
+            // 0x100000043, matched no case, fell into the default below, and
+            // -- because that default is unreachable -- the compiler emitted an
+            // unguarded jump-table lookup at a four-billion-entry offset.
+            println("\tswitch ({}.u32) {{", r(switchTable->second.r));
 
             for (size_t i = 0; i < switchTable->second.labels.size(); i++)
             {
@@ -744,8 +752,16 @@ bool Recompiler::Recompile(
                 }
             }
 
+            // __builtin_unreachable() here is a promise the analyser cannot
+            // keep: it only ever sees as many cases as it could recover from
+            // the table, so any index beyond them is undefined behaviour rather
+            // than a diagnosable fault. That is how a stale upper half in the
+            // index register turned into an unguarded jump-table read far
+            // outside the executable. An index the analyser did not account for
+            // is a real gap, so it stops here and says which one.
             println("\tdefault:");
-            println("\t\t__builtin_unreachable();");
+            println("\t\t__builtin_debugtrap(); // switch index outside the recovered table");
+            println("\t\treturn;");
             println("\t}}");
 
             switchTable = config.switchTables.end();
