@@ -68,6 +68,15 @@ struct Recompiler
     // into the output instead of nothing, so they can never silently miscompile.
     size_t unrecognizedInstructionCount{};
 
+    // Switch cases whose target the recompiler could not reach. These used to
+    // emit a bare `return`, which silently skipped the case's work.
+    size_t unreachableSwitchCaseCount{};
+
+    // Functions grown to cover their own jump-table targets.
+    size_t extendedSwitchFunctionCount{};
+
+    void ExtendFunctionsOverSwitchTables();
+
     void Recompile(const std::filesystem::path& headerFilePath);
 
     void SaveCurrentOutData(const std::string_view& name = std::string_view());

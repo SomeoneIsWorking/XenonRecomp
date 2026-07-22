@@ -252,6 +252,96 @@ void Recompiler::Analyse()
     }
 
     std::sort(functions.begin(), functions.end(), [](auto& lhs, auto& rhs) { return lhs.base < rhs.base; });
+
+    ExtendFunctionsOverSwitchTables();
+}
+
+// Function::Analyze treats bctr as a block terminator, because without the
+// switch table it cannot know where control goes. For the common Xbox 360
+// idiom where the jump targets are small stubs laid out immediately after the
+// bctr, that ends the function short: the stubs fall outside
+// [fn.base, fn.base + fn.size), the linear scan then mistakes each of them for
+// a function of its own, and the recompiler emits
+//
+//     case N:
+//         // ERROR: 0x826D6668
+//         return;
+//
+// for every case -- a silent early return that skips whatever the stub did.
+// In Gears that hit sub_826D6610, which computes an allocation size and
+// returns only its base term without the per-type adjustment, so objects came
+// out undersized and the pool handed out overlapping blocks. It affected 1394
+// cases across the title.
+//
+// The switch tables are known here, so grow each owning function to cover its
+// own targets and absorb the stub "functions" the linear scan invented.
+void Recompiler::ExtendFunctionsOverSwitchTables()
+{
+    std::vector<bool> absorbed(functions.size(), false);
+
+    for (const auto& [tableAddress, table] : config.switchTables)
+    {
+        // The table is keyed by the address that starts the sequence, which is
+        // inside the function that owns the bctr.
+        auto it = std::upper_bound(functions.begin(), functions.end(), tableAddress,
+            [](size_t address, const Function& f) { return address < f.base; });
+        if (it == functions.begin())
+            continue;
+        --it;
+
+        const size_t index = it - functions.begin();
+        if (absorbed[index] || tableAddress >= it->base + it->size)
+            continue;
+
+        size_t maxTarget = 0;
+        for (auto label : table.labels)
+            maxTarget = std::max(maxTarget, size_t(label));
+
+        size_t end = it->base + it->size;
+        if (maxTarget < end)
+            continue;
+
+        // Absorb the functions the linear scan carved out of the stub region,
+        // taking their ends so the last stub's terminator is included rather
+        // than cutting mid-block at maxTarget.
+        size_t next = index + 1;
+        while (next < functions.size() && functions[next].base <= maxTarget)
+        {
+            end = std::max(end, functions[next].base + functions[next].size);
+            absorbed[next] = true;
+            ++next;
+        }
+
+        // If the targets still are not covered the layout is not the stub
+        // idiom this handles. Leave the function alone so the recompiler
+        // reports it rather than silently emitting a wrong extent.
+        if (maxTarget >= end)
+        {
+            for (size_t i = index + 1; i < next; i++)
+                absorbed[i] = false;
+            continue;
+        }
+
+        it->size = end - it->base;
+        ++extendedSwitchFunctionCount;
+    }
+
+    std::vector<Function> kept;
+    kept.reserve(functions.size());
+    for (size_t i = 0; i < functions.size(); i++)
+    {
+        if (!absorbed[i])
+            kept.push_back(functions[i]);
+    }
+    functions = std::move(kept);
+
+    // The symbol table drove the extents above, so rebuild the function
+    // symbols from the merged list; a stale symbol would reintroduce the split.
+    for (auto it = image.symbols.begin(); it != image.symbols.end(); )
+        it = (it->type == Symbol_Function) ? image.symbols.erase(it) : std::next(it);
+
+    for (const auto& fn : functions)
+        image.symbols.emplace(fmt::format("sub_{:X}", fn.base), fn.base, fn.size, Symbol_Function);
 }
 
 bool Recompiler::Recompile(
@@ -625,9 +715,13 @@ bool Recompiler::Recompile(
                 auto label = switchTable->second.labels[i];
                 if (label < fn.base || label >= fn.base + fn.size)
                 {
-                    println("\t\t// ERROR: 0x{:X}", label);
+                    // A bare return here silently skips whatever the case did.
+                    // Trap instead, so an unreachable target can never be
+                    // mistaken for a correctly recompiled one.
+                    println("\t\t__builtin_debugtrap(); // unreachable switch target 0x{:X}", label);
                     fmt::println("ERROR: Switch case at {:X} is trying to jump outside function: {:X}", base, label);
                     println("\t\treturn;");
+                    ++unreachableSwitchCaseCount;
                 }
                 else
                 {
