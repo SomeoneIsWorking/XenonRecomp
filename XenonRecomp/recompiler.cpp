@@ -1202,7 +1202,13 @@ bool Recompiler::Recompile(
         break;
 
     case PPC_INST_LDARX:
-        print("\t{}.u64 = *(uint64_t*)(base + ", reserved());
+        // The load half of a reservation reads memory another guest thread is
+        // concurrently writing, so it must be volatile exactly like every other
+        // guest load (PPC_LOAD_U64). Without it this is the ONE guest memory
+        // read the optimiser may hoist, CSE or duplicate; today it survives only
+        // because the paired __sync_bool_compare_and_swap happens to be a full
+        // barrier that pins it inside the retry loop.
+        print("\t{}.u64 = *(volatile uint64_t*)(base + ", reserved());
         if (insn.operands[1] != 0)
             print("{}.u32 + ", r(insn.operands[1]));
         println("{}.u32);", r(insn.operands[2]));
@@ -1346,7 +1352,9 @@ bool Recompiler::Recompile(
         break;
 
     case PPC_INST_LWARX:
-        print("\t{}.u32 = *(uint32_t*)(base + ", reserved());
+        // See PPC_INST_LDARX: volatile, to match PPC_LOAD_U32 and to stop the
+        // optimiser treating a racy cross-thread read as data-race-free.
+        print("\t{}.u32 = *(volatile uint32_t*)(base + ", reserved());
         if (insn.operands[1] != 0)
             print("{}.u32 + ", r(insn.operands[1]));
         println("{}.u32);", r(insn.operands[2]));
@@ -1671,6 +1679,7 @@ bool Recompiler::Recompile(
         break;
 
     case PPC_INST_STDCX:
+        // Same deliberate divergence as PPC_INST_STWCX -- see the note there.
         println("\t{}.lt = 0;", cr(0));
         println("\t{}.gt = 0;", cr(0));
         print("\t{}.eq = __sync_bool_compare_and_swap(reinterpret_cast<uint64_t*>(base + ", cr(0));
@@ -1826,6 +1835,28 @@ bool Recompiler::Recompile(
         break;
 
     case PPC_INST_STWCX:
+        // KNOWN, DELIBERATE DIVERGENCE -- a value CAS, not a store-conditional.
+        // Hardware stwcx. asks "has anything touched this line since my lwarx";
+        // this asks "does it still hold the value my lwarx read". The two differ
+        // exactly in the ABA case: changed-and-changed-back succeeds here and
+        // would fail on hardware. It is NOT made faithful because a real
+        // reservation must be lost when ANY thread stores to the granule, and
+        // guest stores go through plain PPC_STORE_* with no hook -- modelling it
+        // would put a reservation-table update on every guest store in the game.
+        // A partial model (self-invalidation only) buys nothing and would be a
+        // half-fix.
+        //
+        // THIS IS NOT HARMLESS EVERYWHERE. An audit of all 184 reservation
+        // windows in this title found 143 pure read-modify-writes (equivalent
+        // under a value CAS, since the retry converges), 40 guest-written
+        // compare-exchanges (a value CAS IS their contract), one tagged SList
+        // head whose sequence counter defeats ABA by construction -- and TWO
+        // untagged lock-free pops with the Treiber-stack shape
+        // (lwarx/cmpw/bne/stwcx. where the new value is loaded THROUGH the old
+        // pointer). Those two are genuinely ABA-fatal on hardware terms, and a
+        // value CAS silently succeeds where a reservation would have failed.
+        // They are believed unreached by this title, not proven safe. See
+        // docs/issues/0048 and tools/atomic_audit.py.
         println("\t{}.lt = 0;", cr(0));
         println("\t{}.gt = 0;", cr(0));
         print("\t{}.eq = __sync_bool_compare_and_swap(reinterpret_cast<uint32_t*>(base + ", cr(0));
