@@ -729,8 +729,24 @@ inline uint64_t __rdtsc()
 // inside a spin loop, and it is monotonic -- mftb must never go backwards.
 #define PPC_TIME_BASE_FREQUENCY 49875000ull
 
+// THE HOST CAN REPLACE THE TIME SOURCE. Generated code calls __ppc_time_base()
+// directly at every mftb, so there is no other choke point, and a differential
+// harness needs the guest's clock to be a function of its input schedule rather
+// than of how fast this machine happens to run (gears1 catalog #84: without it
+// the title does not reproduce against itself, 17.7% identical pixels by frame
+// 1200). Null means the real clock below, which is what a normal run uses.
+inline uint64_t (*__ppc_time_base_source)() = nullptr;
+
+inline void __ppc_set_time_base_source(uint64_t (*source)())
+{
+    __ppc_time_base_source = source;
+}
+
 inline uint64_t __ppc_time_base()
 {
+    if (__ppc_time_base_source)
+        return __ppc_time_base_source();
+
     const uint64_t nanoseconds = uint64_t(std::chrono::duration_cast<std::chrono::nanoseconds>(
         std::chrono::steady_clock::now().time_since_epoch()).count());
 
