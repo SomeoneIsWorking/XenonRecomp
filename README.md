@@ -70,15 +70,21 @@ The local variable optimization particularly introduces the most improvements, a
 
 ### Patch Mechanisms
 
-XenonRecomp defines PPC functions in a way that makes them easy to hook, using techniques in the Clang compiler. By aliasing a PPC function to an "implementation function" and marking the original function as weakly linked, users can override it with a custom implementation while retaining access to the original function:
+XenonRecomp emits every PPC function as a retained implementation plus a weak, noinline forwarding function. A recompilation project can provide a strong definition of the forwarding function to intercept both cross-file and same-file generated calls, while the retained `__imp__` function remains available for a super-call or an A/B comparison:
 
 ```cpp
-PPC_FUNC_IMPL(__imp__sub_XXXXXXXX);
-PPC_FUNC(sub_XXXXXXXX)
+PPC_FUNC_IMPL(__imp__sub_XXXXXXXX)
+{
+    // Recompiled PPC body.
+}
+
+PPC_WEAK_FUNC(sub_XXXXXXXX)
 {
     __imp__sub_XXXXXXXX(ctx, base);
 }
 ```
+
+Do not remove or edit the generated `__imp__` body when adding an override. Define a strong `PPC_FUNC(sub_XXXXXXXX)` in a separate source file and call `__imp__sub_XXXXXXXX(ctx, base)` when the override needs the original behavior. The forwarding function is deliberately not a compiler alias: Clang can bind same-translation-unit calls directly to an alias target, which bypasses a strong override at link time.
 
 Additionally, mid-asm hooks can be inserted directly into the translated C++ code at specific instruction addresses. The recompiler inserts these function calls, and users are responsible for implementing them in their recompilation project. The linker resolves them during compilation.
 

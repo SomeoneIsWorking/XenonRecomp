@@ -1,5 +1,7 @@
 #include "pch.h"
 #include "recompiler.h"
+#include "function_binding.h"
+#include <stdexcept>
 #include <xex_patcher.h>
 
 static uint64_t ComputeMask(uint32_t mstart, uint32_t mstop)
@@ -2691,11 +2693,8 @@ bool Recompiler::Recompile(const Function& fn)
         name = fmt::format("sub_{}", fn.base);
     }
 
-#ifdef XENON_RECOMP_USE_ALIAS
-    println("__attribute__((alias(\"__imp__{}\"))) PPC_WEAK_FUNC({});", name, name);
-#endif
-
-    println("PPC_FUNC_IMPL(__imp__{}) {{", name);
+    const auto binding = EmitFunctionBinding(name);
+    out += binding.implementationOpen;
     println("\tPPC_FUNC_PROLOGUE();");
 
     auto switchTable = config.switchTables.end();
@@ -2760,11 +2759,7 @@ bool Recompiler::Recompile(const Function& fn)
 
     println("}}\n");
 
-#ifndef XENON_RECOMP_USE_ALIAS
-    println("PPC_WEAK_FUNC({}) {{", name);
-    println("\t__imp__{}(ctx, base);", name);
-    println("}}\n");
-#endif
+    out += binding.forwarder;
 
     std::swap(out, tempString);
     if (localVariables.ctr)
@@ -2975,8 +2970,13 @@ void Recompiler::SaveCurrentOutData(const std::string_view& name)
         if (shouldWrite)
         {
             f = fopen(filePath.c_str(), "wb");
-            fwrite(out.data(), 1, out.size(), f);
+            if (f == nullptr)
+                throw std::runtime_error(fmt::format("Unable to open {}", filePath));
+
+            const bool writeFailed = fwrite(out.data(), 1, out.size(), f) != out.size();
             fclose(f);
+            if (writeFailed)
+                throw std::runtime_error(fmt::format("Unable to write {}", filePath));
         }
 
         out.clear();

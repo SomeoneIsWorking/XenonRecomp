@@ -20,6 +20,14 @@ set(XENONRECOMP_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/XenonRecomp)
 
 project ("XenonRecomp-ALL")
 
+if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    message(FATAL_ERROR "XenonRecomp requires the Clang C++ toolchain")
+endif()
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+include(CTest)
+
 add_subdirectory(${XENONANALYSE_ROOT})
 add_subdirectory(${XENONRECOMP_ROOT})
 add_subdirectory(${XENONUTILS_ROOT})
@@ -27,4 +35,20 @@ add_subdirectory(${XENONUTILS_ROOT})
 # Only tests if this is the top level project
 if (${CMAKE_CURRENT_SOURCE_DIR} STREQUAL ${CMAKE_SOURCE_DIR})
     add_subdirectory(XenonTests)
+
+    if (BUILD_TESTING)
+        find_package(Python3 REQUIRED COMPONENTS Interpreter)
+        add_subdirectory(XenonRecompTests)
+        add_test(NAME XenonRecompCppQuality
+            COMMAND ${Python3_EXECUTABLE}
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/check_cpp_quality.py"
+                    "${CMAKE_BINARY_DIR}")
+        add_test(NAME XenonRecompSourceStructure
+            COMMAND ${Python3_EXECUTABLE}
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/check_source_structure.py")
+        add_test(NAME XenonRecompSourceStructureSelftest
+            COMMAND ${Python3_EXECUTABLE}
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/check_source_structure.py"
+                    --selftest)
+    endif()
 endif()
