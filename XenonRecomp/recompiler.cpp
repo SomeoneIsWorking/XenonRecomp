@@ -2694,7 +2694,7 @@ bool Recompiler::Recompile(const Function& fn)
     }
 
     const auto binding = EmitFunctionBinding(name);
-    out += binding.implementationOpen;
+    out.append(binding.declaration).append(binding.implementationOpen);
     println("\tPPC_FUNC_PROLOGUE();");
 
     auto switchTable = config.switchTables.end();
@@ -2917,7 +2917,7 @@ void Recompiler::Recompile(const std::filesystem::path& headerFilePath)
         if ((i % 256) == 0)
         {
             SaveCurrentOutData();
-            println("#include \"ppc_recomp_shared.h\"\n");
+            out += EmitRecompilationUnitPreamble();
         }
 
         if ((i % 2048) == 0 || (i == (functions.size() - 1)))

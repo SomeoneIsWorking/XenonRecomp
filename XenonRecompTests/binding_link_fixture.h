@@ -13,5 +13,10 @@ struct BindingTestContext
 
 PPC_FUNC(binding_test_target);
 PPC_FUNC_IMPL(__imp__binding_test_target);
+PPC_FUNC(binding_test_direct_target);
+PPC_FUNC_IMPL(__imp__binding_test_direct_target);
 
 void BindingTestGeneratedCaller(BindingTestContext &ctx, std::uint8_t *base);
+void BindingTestDirectCaller(BindingTestContext &ctx, std::uint8_t *base);
+std::uintptr_t BindingTestDirectTargetAddress();
+std::uintptr_t BindingTestDirectImplementationAddress();

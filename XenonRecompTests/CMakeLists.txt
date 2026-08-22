@@ -1,6 +1,7 @@
 project("XenonRecompTests")
 
 add_executable(XenonRecompBindingTests
+    "binding_direct_alias_generated.cpp"
     "binding_emission_test.cpp"
     "binding_link_generated.cpp"
     "binding_link_override.cpp"

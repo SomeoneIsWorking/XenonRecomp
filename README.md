@@ -86,6 +86,12 @@ PPC_WEAK_FUNC(sub_XXXXXXXX)
 
 Do not remove or edit the generated `__imp__` body when adding an override. Define a strong `PPC_FUNC(sub_XXXXXXXX)` in a separate source file and call `__imp__sub_XXXXXXXX(ctx, base)` when the override needs the original behavior. The forwarding function is deliberately not a compiler alias: Clang can bind same-translation-unit calls directly to an alias target, which bypasses a strong override at link time.
 
+The forwarding seam is not free. Its weak, noinline definition prevents callers from inlining the recompiled body, and a body that Clang does not inline into the forwarder adds another tail branch. A universal runtime override table would be more expensive still: every call would require a slot load and an indirect branch.
+
+Performance-sensitive runtimes can define `PPC_RECOMP_BINDINGS_HEADER` as a quoted include path. On platforms with Clang function-alias support, the included generated header may define `PPC_RECOMP_DIRECT_UNBOUND` and one `PPC_RECOMP_OVERRIDE_<function>` macro for each proven override target. Every unmarked function then becomes a strong alias of its retained `__imp__` body, with no forwarding thunk; marked functions keep the weak forwarder described above. Platforms without function-alias support must leave direct-unbound mode disabled. The header can also expose semantic names for the module-specific public and `__imp__` symbols, so native source uses semantic identifiers rather than title addresses.
+
+That header must be generated from the user's executable and exact-checked against its module identity before compiling the recompiled output. Do not track an address-bearing bindings header, enable direct-unbound mode without a complete manifest, add a universal runtime lookup, or silently reuse one module's bindings for another. Without `PPC_RECOMP_BINDINGS_HEADER`, XenonRecomp deliberately emits the all-function forwarding policy for compatibility and correctness.
+
 Additionally, mid-asm hooks can be inserted directly into the translated C++ code at specific instruction addresses. The recompiler inserts these function calls, and users are responsible for implementing them in their recompilation project. The linker resolves them during compilation.
 
 ## Usage
