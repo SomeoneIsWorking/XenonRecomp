@@ -42,7 +42,13 @@ XenonAnalyse generates a TOML file containing detected jump tables, which can be
 
 XenonAnalyse includes a function boundary analyzer that works well in most cases. Functions with stack space have their boundaries defined in the `.pdata` segment of the XEX. For functions not found in this segment, the analyzer detects the start of functions by searching for branch link instructions, and determines their length via static analysis.
 
-However, the analyzer struggles with functions containing jump tables, since they look like tail calls without enough information. While there is currently no solution for this, it might be relatively simple to extend the function analyzer to account for jump tables defined in the TOML file. As a workaround, the recompiler TOML file allows users to manually define function boundaries.
+Configured jump-table labels seed a bounded CFG discovery pass. A function may
+therefore own disjoint executable blocks after a computed branch without
+claiming the bytes between them. `[main].data_ranges` marks inline tables or
+other non-code holes; discovery and emission refuse to decode those bytes, cross
+an authoritative foreign function envelope, or accept an ambiguous owner.
+Manual function boundaries remain available for binaries whose metadata and
+direct-call graph do not identify an entry.
 
 ### Exceptions
 
@@ -96,6 +102,29 @@ Additionally, mid-asm hooks can be inserted directly into the translated C++ cod
 
 ## Usage
 
+### xex-inspect
+
+`xex-inspect` is the title-neutral provisioning boundary over XenonUtils' one
+retail AES/LZX XEX loader:
+
+```
+xex-inspect default.xex --image-out image.bin > inspection.json
+```
+
+The explicit output is a sealed normalized identity artifact. XenonRecomp still
+consumes the exact-checked XEX through the same checked loader; it does not read
+the raw `image.bin` artifact. Schema-1 JSON seals the raw XEX and image SHA-256
+values, execution title/media
+metadata, image base/size/entry, section ranges, logical imports, and all eight
+ABI save/restore helper pattern matches. Function imports pair their type-zero
+record with the type-one callable thunk and expose both `record_address` and
+`address`; only unpaired type-zero records are variables. Consumers must refuse
+duplicate library/ordinal identities or helper patterns that do not resolve
+uniquely rather than collapsing ambiguous input.
+
+Building `xex-inspect` requires OpenSSL Crypto for SHA-256. This is a required
+build dependency; CMake refuses when it is unavailable.
+
 ### XenonAnalyse
 
 XenonAnalyse, when used as a command-line application, allows an XEX file to be passed as an input argument to output a TOML file containing all the detected jump tables in the executable:
@@ -127,6 +156,9 @@ patch_file_path = "../private/default.xexp"
 patched_file_path = "../private/default_patched.xex"
 out_directory_path = "../ppc"
 switch_table_file_path = "SWA_switch_tables.toml"
+data_ranges = [
+    { address = 0x82001234, size = 0x10 },
+]
 ```
 
 All the paths are relative to the directory where the TOML file is stored.
@@ -138,6 +170,7 @@ patch_file_path|Path to the XEXP file. This is not required if the game has no t
 patched_file_path|Path to the patched XEX file. XenonRecomp will create this file automatically if it is missing and reuse it in subsequent recompilations. It does nothing if no XEXP file is specified. You can pass this output file to XenonAnalyse.
 out_directory_path|Path to the directory that will contain the output C++ code. This directory must exist before running the recompiler.
 switch_table_file_path|Path to the TOML file containing the jump table definitions. The recompiler uses this file to convert jump tables to real switch cases.
+data_ranges|Optional exact image ranges that contain data embedded between executable blocks. They must be non-empty, non-overlapping, and inside a mapped code section. The switch-aware CFG may cross them only through configured case labels; it never decodes their bytes as instructions.
 
 #### Optimizations
 
@@ -167,7 +200,7 @@ restvmx_64_address = 0x831B377C
 savevmx_64_address = 0x831B34E4
 ```
 
-Xbox 360 binaries feature specialized register restore & save functions that act similarly to switch case fallthroughs. Every function that utilizes non-volatile registers either has an inlined version of these functions or explicitly calls them. The recompiler requires the starting address of each restore/save function in the TOML file to recompile them correctly. These functions could likely be auto-detected, but there is currently no mechanism for it.
+Xbox 360 binaries feature specialized register restore & save functions that act similarly to switch case fallthroughs. Every function that utilizes non-volatile registers either has an inlined version of these functions or explicitly calls them. The recompiler requires the starting address of each restore/save function in the TOML file to recompile them correctly. `xex-inspect` scans code sections for all eight documented patterns and reports every candidate; the title input generator must require exactly one address for each helper.
 
 Property|Description|Byte Pattern
 -|-|-

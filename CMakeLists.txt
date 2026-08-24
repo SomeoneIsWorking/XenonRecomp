@@ -31,6 +31,7 @@ include(CTest)
 add_subdirectory(${XENONANALYSE_ROOT})
 add_subdirectory(${XENONRECOMP_ROOT})
 add_subdirectory(${XENONUTILS_ROOT})
+add_subdirectory(XexInspect)
 
 # Only tests if this is the top level project
 if (${CMAKE_CURRENT_SOURCE_DIR} STREQUAL ${CMAKE_SOURCE_DIR})
@@ -39,6 +40,7 @@ if (${CMAKE_CURRENT_SOURCE_DIR} STREQUAL ${CMAKE_SOURCE_DIR})
     if (BUILD_TESTING)
         find_package(Python3 REQUIRED COMPONENTS Interpreter)
         add_subdirectory(XenonRecompTests)
+        add_subdirectory(XexInspectTests)
         add_test(NAME XenonRecompCppQuality
             COMMAND ${Python3_EXECUTABLE}
                     "${CMAKE_CURRENT_SOURCE_DIR}/tools/check_cpp_quality.py"

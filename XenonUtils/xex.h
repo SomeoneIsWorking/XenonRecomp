@@ -1,8 +1,12 @@
 #pragma once
+#include <cstddef>
+#include <cstdint>
 #include <memory>
+#include <string>
 #include "xbox.h"
 
-inline constexpr uint8_t Xex2RetailKey[16] = { 0x20, 0xB1, 0x85, 0xA5, 0x9D, 0x28, 0xFD, 0xC3, 0x40, 0x58, 0x3F, 0xBB, 0x08, 0x96, 0xBF, 0x91 };
+inline constexpr uint8_t Xex2RetailKey[16] = {0x20, 0xB1, 0x85, 0xA5, 0x9D, 0x28, 0xFD, 0xC3,
+                                              0x40, 0x58, 0x3F, 0xBB, 0x08, 0x96, 0xBF, 0x91};
 inline constexpr uint8_t AESBlankIV[16] = {};
 
 enum Xex2ModuleFlags
@@ -82,6 +86,32 @@ struct Xex2OptHeader
         be<uint32_t> value;
         be<uint32_t> offset;
     };
+};
+
+struct Xex2ExecutionInfo
+{
+    be<uint32_t> mediaId;
+    be<uint32_t> version;
+    be<uint32_t> baseVersion;
+    be<uint32_t> titleId;
+    uint8_t platform;
+    uint8_t executableTable;
+    uint8_t discNumber;
+    uint8_t discCount;
+    be<uint32_t> savegameId;
+};
+
+struct Xex2ExecutionMetadata
+{
+    uint32_t mediaId{};
+    uint32_t version{};
+    uint32_t baseVersion{};
+    uint32_t titleId{};
+    uint8_t platform{};
+    uint8_t executableTable{};
+    uint8_t discNumber{};
+    uint8_t discCount{};
+    uint32_t savegameId{};
 };
 
 struct Xex2Header
@@ -193,7 +223,7 @@ struct Xex2ImportHeader
     be<uint32_t> numImports;
 };
 
-struct Xex2ImportLibrary 
+struct Xex2ImportLibrary
 {
     be<uint32_t> size;
     char nextImportDigest[0x14];
@@ -204,12 +234,12 @@ struct Xex2ImportLibrary
     be<uint16_t> numberOfImports;
 };
 
-struct Xex2ImportDescriptor 
+struct Xex2ImportDescriptor
 {
     be<uint32_t> firstThunk; // VA XEX_THUNK_DATA
 };
 
-struct Xex2ThunkData 
+struct Xex2ThunkData
 {
     union
     {
@@ -237,15 +267,15 @@ struct Xex2ResourceInfo
     be<uint32_t> sizeOfData;
 };
 
-inline const void* getOptHeaderPtr(const uint8_t* moduleBytes, uint32_t headerKey)
+inline const void *getOptHeaderPtr(const uint8_t *moduleBytes, uint32_t headerKey)
 {
-    const Xex2Header* xex2Header = (const Xex2Header*)(moduleBytes);
+    const Xex2Header *xex2Header = (const Xex2Header *)(moduleBytes);
     for (uint32_t i = 0; i < xex2Header->headerCount; i++)
     {
-        const Xex2OptHeader& optHeader = ((const Xex2OptHeader*)(xex2Header + 1))[i];
+        const Xex2OptHeader &optHeader = ((const Xex2OptHeader *)(xex2Header + 1))[i];
         if (optHeader.key == headerKey)
         {
-            if((headerKey & 0xFF) == 0)
+            if ((headerKey & 0xFF) == 0)
             {
                 return reinterpret_cast<const uint32_t *>(&optHeader.value);
             }
@@ -255,7 +285,8 @@ inline const void* getOptHeaderPtr(const uint8_t* moduleBytes, uint32_t headerKe
             }
             else
             {
-                return reinterpret_cast<const void *>(reinterpret_cast<uintptr_t>(moduleBytes) + optHeader.offset);
+                return reinterpret_cast<const void *>(reinterpret_cast<uintptr_t>(moduleBytes) +
+                                                      optHeader.offset);
             }
         }
     }
@@ -264,4 +295,6 @@ inline const void* getOptHeaderPtr(const uint8_t* moduleBytes, uint32_t headerKe
 }
 
 struct Image;
-Image Xex2LoadImage(const uint8_t* data, size_t dataSize);
+bool TryLoadXex(const uint8_t *data, size_t dataSize, Image &image, Xex2ExecutionMetadata &metadata,
+                std::string &error);
+Image Xex2LoadImage(const uint8_t *data, size_t dataSize);

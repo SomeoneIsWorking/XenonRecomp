@@ -13,11 +13,13 @@ SOURCE_ROOTS = (
     "XenonRecompTests",
     "XenonTests",
     "XenonUtils",
+    "XexInspect",
+    "XexInspectTests",
     "tools",
 )
 SOURCE_SUFFIXES = {".c", ".cc", ".cpp", ".h", ".hpp", ".py"}
 DEFAULT_LIMIT = 1200
-LEGACY_LIMITS = {"XenonRecomp/recompiler.cpp": 2984}
+LEGACY_LIMITS = {"XenonRecomp/recompiler.cpp": 2728}
 
 
 def violations(entries: dict[str, int]) -> list[str]:
@@ -45,10 +47,10 @@ def source_counts(root: Path) -> dict[str, int]:
 
 def selftest() -> int:
     assert not violations({"XenonUtils/small.cpp": 1200,
-                           "XenonRecomp/recompiler.cpp": 2984})
+                           "XenonRecomp/recompiler.cpp": 2728})
     assert "exceeds" in violations({"XenonUtils/new.cpp": 1201})[0]
-    assert "exceeds" in violations({"XenonRecomp/recompiler.cpp": 2985})[0]
-    assert "ratchet" in violations({"XenonRecomp/recompiler.cpp": 2983})[0]
+    assert "exceeds" in violations({"XenonRecomp/recompiler.cpp": 2729})[0]
+    assert "ratchet" in violations({"XenonRecomp/recompiler.cpp": 2727})[0]
     print("source-structure selftest passed: new, growth, and ratchet controls exercised")
     return 0
 

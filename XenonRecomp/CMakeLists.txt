@@ -3,9 +3,12 @@ cmake_minimum_required (VERSION 3.8)
 project("XenonRecomp")
 
 add_executable(XenonRecomp 
+    "data_range.cpp"
     "main.cpp" 
     "function_binding.cpp"
+    "function_scan.cpp"
     "recompiler.cpp"
+    "switch_extent.cpp"
     "test_recompiler.cpp" 
     "recompiler_config.cpp")
 

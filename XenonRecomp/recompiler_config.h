@@ -1,5 +1,7 @@
 #pragma once
 
+#include "data_range.h"
+
 struct RecompilerSwitchTable
 {
     uint32_t r;
@@ -51,7 +53,8 @@ struct RecompilerConfig
     uint32_t setJmpAddress = 0;
     std::unordered_map<uint32_t, uint32_t> functions;
     std::unordered_map<uint32_t, uint32_t> invalidInstructions;
+    std::vector<RecompilerDataRange> dataRanges;
     std::unordered_map<uint32_t, RecompilerMidAsmHook> midAsmHooks;
 
-    void Load(const std::string_view& configFilePath);
+    void Load(const std::string_view &configFilePath);
 };

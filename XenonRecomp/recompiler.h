@@ -31,20 +31,19 @@ struct Recompiler
     static constexpr uint32_t c_eieio = 0xAC06007C;
     Image image;
     std::vector<Function> functions;
+    std::unordered_set<size_t> authoritativeFunctionStarts;
     std::string out;
     size_t cppFileIndex = 0;
     RecompilerConfig config;
 
-    bool LoadConfig(const std::string_view& configFilePath);
+    bool LoadConfig(const std::string_view &configFilePath);
 
-    template<class... Args>
-    void print(fmt::format_string<Args...> fmt, Args&&... args)
+    template <class... Args> void print(fmt::format_string<Args...> fmt, Args &&...args)
     {
         fmt::vformat_to(std::back_inserter(out), fmt.get(), fmt::make_format_args(args...));
     }
 
-    template<class... Args>
-    void println(fmt::format_string<Args...> fmt, Args&&... args)
+    template <class... Args> void println(fmt::format_string<Args...> fmt, Args &&...args)
     {
         fmt::vformat_to(std::back_inserter(out), fmt.get(), fmt::make_format_args(args...));
         out += '\n';
@@ -53,16 +52,11 @@ struct Recompiler
     void Analyse();
 
     // TODO: make a RecompileArgs struct instead this is getting messy
-    bool Recompile(
-        const Function& fn,
-        uint32_t base,
-        const ppc_insn& insn,
-        const uint32_t* data,
-        std::unordered_map<uint32_t, RecompilerSwitchTable>::iterator& switchTable,
-        RecompilerLocalVariables& localVariables,
-        CSRState& csrState);
+    bool Recompile(const Function &fn, uint32_t base, const ppc_insn &insn, const uint32_t *data,
+                   std::unordered_map<uint32_t, RecompilerSwitchTable>::iterator &switchTable,
+                   RecompilerLocalVariables &localVariables, CSRState &csrState);
 
-    bool Recompile(const Function& fn);
+    bool Recompile(const Function &fn);
 
     // Instructions the recompiler had no implementation for. These emit a trap
     // into the output instead of nothing, so they can never silently miscompile.
@@ -75,9 +69,14 @@ struct Recompiler
     // Functions grown to cover their own jump-table targets.
     size_t extendedSwitchFunctionCount{};
 
-    void ExtendFunctionsOverSwitchTables();
+    bool HasFatalGaps() const noexcept
+    {
+        return unrecognizedInstructionCount != 0 || unreachableSwitchCaseCount != 0;
+    }
 
-    void Recompile(const std::filesystem::path& headerFilePath);
+    void ResolveSwitchFunctionOwnership();
 
-    void SaveCurrentOutData(const std::string_view& name = std::string_view());
+    void Recompile(const std::filesystem::path &headerFilePath);
+
+    void SaveCurrentOutData(const std::string_view &name = std::string_view());
 };

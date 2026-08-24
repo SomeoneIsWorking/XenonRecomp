@@ -15,19 +15,14 @@ struct Function
     {
         size_t base{};
         size_t size{};
-        size_t projectedSize{ static_cast<size_t>(-1) }; // scratch
+        size_t projectedSize{static_cast<size_t>(-1)}; // scratch
         DEBUG(size_t parent{});
 
-        Block() 
-        {
-        }
+        Block() {}
 
-        Block(size_t base, size_t size)
-            : base(base), size(size) 
-        {
-        }
+        Block(size_t base, size_t size) : base(base), size(size) {}
 
-        Block(size_t base, size_t size, size_t projectedSize) 
+        Block(size_t base, size_t size, size_t projectedSize)
             : base(base), size(size), projectedSize(projectedSize)
         {
         }
@@ -37,15 +32,14 @@ struct Function
     size_t size{};
     std::vector<Block> blocks{};
 
-    Function()
-    {
-    }
+    Function() {}
 
-    Function(size_t base, size_t size)
-        : base(base), size(size)
-    {
-    }
-    
+    Function(size_t base, size_t size) : base(base), size(size) {}
+
     size_t SearchBlock(size_t address) const;
-    static Function Analyze(const void* code, size_t size, size_t base);
+    bool ContainsAddress(size_t address) const;
+    std::vector<Block> ExecutableBlocks() const;
+    void NormalizeBlocks();
+    void AbsorbCode(const Function &other);
+    static Function Analyze(const void *code, size_t size, size_t base);
 };

@@ -9,5 +9,5 @@ Checks: >
   performance-*,
   readability-container-size-empty
 WarningsAsErrors: '*'
-HeaderFilterRegex: '^(XenonRecomp|XenonRecompTests)/'
+HeaderFilterRegex: '^(XenonAnalyse|XenonRecomp|XenonRecompTests|XenonUtils|XexInspect|XexInspectTests)/'
 FormatStyle: file

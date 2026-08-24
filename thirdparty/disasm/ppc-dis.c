@@ -21,6 +21,8 @@ see <http://www.gnu.org/licenses/>.  */
 #include "dis-asm.h"
 #include "ppc.h"
 
+#include <stdlib.h>
+
 #define BFD_DEFAULT_TARGET_SIZE 64
 
 /* ppc.h -- Header file for PowerPC opcode table
@@ -5303,6 +5305,28 @@ sizeof(powerpc_macros) / sizeof(powerpc_macros[0]);
 static int print_insn_powerpc(bfd_vma, struct disassemble_info*, int, int);
 static int decode_insn_powerpc(bfd_vma memaddr, disassemble_info* info, int bigendian, int dialect, ppc_insn* oinsn);
 
+struct dis_private
+{
+    int dialect;
+};
+
+static int get_powerpc_dialect(const struct disassemble_info* info)
+{
+    const struct dis_private* private_data = (const struct dis_private*)info->private_data;
+    return private_data != NULL ? private_data->dialect : 0;
+}
+
+static int opcode_is_supported(int flags, int dialect)
+{
+    const int size_mask = PPC_OPCODE_32 | PPC_OPCODE_64;
+    const int opcode_size = flags & size_mask;
+    const int dialect_size = dialect & size_mask;
+
+    return (flags & dialect & ~size_mask) != 0
+        && (opcode_size == 0 || opcode_size == dialect_size
+            || (dialect & PPC_OPCODE_64_BRIDGE) != 0);
+}
+
 /* Determine which set of machines to disassemble for.  PPC403/601 or
    BookE.  For convenience, also disassemble instructions supported
    by the AltiVec vector unit.  */
@@ -5363,26 +5387,54 @@ powerpc_dialect(struct disassemble_info* info)
     if (info->disassembler_options)
     {
         if (strstr(info->disassembler_options, "32") != NULL)
+        {
             dialect &= ~PPC_OPCODE_64;
+            dialect |= PPC_OPCODE_32;
+        }
         else if (strstr(info->disassembler_options, "64") != NULL)
+        {
+            dialect &= ~PPC_OPCODE_32;
             dialect |= PPC_OPCODE_64;
+        }
     }
 
-    info->private_data = (char*)0 + dialect;
+    if (info->private_data == NULL)
+    {
+        struct dis_private* private_data = (struct dis_private*)malloc(sizeof(*private_data));
+        if (private_data != NULL)
+        {
+            private_data->dialect = dialect;
+            info->private_data = private_data;
+        }
+    }
     return dialect;
 }
 
 int decode_insn_ppc(bfd_vma memaddr, disassemble_info* info, ppc_insn* oinsn)
 {
-    int dialect = (char*)info->private_data - (char*)0;
+    int dialect = get_powerpc_dialect(info);
     return decode_insn_powerpc(memaddr, info, 1, dialect, oinsn);
+}
+
+bool ppc_disassembler_is_64_bit(const disassemble_info* info)
+{
+    return (get_powerpc_dialect(info) & PPC_OPCODE_64) != 0;
+}
+
+void free_ppc_disassembler(disassemble_info* info)
+{
+    if (info == NULL)
+        return;
+
+    free(info->private_data);
+    info->private_data = NULL;
 }
 
 /* Qemu default */
 int
 print_insn_ppc(bfd_vma memaddr, struct disassemble_info* info)
 {
-    int dialect = (char*)info->private_data - (char*)0;
+    int dialect = get_powerpc_dialect(info);
     return print_insn_powerpc(memaddr, info, 1, dialect);
 }
 
@@ -5391,7 +5443,7 @@ print_insn_ppc(bfd_vma memaddr, struct disassemble_info* info)
 int
 print_insn_big_powerpc(bfd_vma memaddr, struct disassemble_info* info)
 {
-    int dialect = (char*)info->private_data - (char*)0;
+    int dialect = get_powerpc_dialect(info);
     return print_insn_powerpc(memaddr, info, 1, dialect);
 }
 
@@ -5400,7 +5452,7 @@ print_insn_big_powerpc(bfd_vma memaddr, struct disassemble_info* info)
 int
 print_insn_little_powerpc(bfd_vma memaddr, struct disassemble_info* info)
 {
-    int dialect = (char*)info->private_data - (char*)0;
+    int dialect = get_powerpc_dialect(info);
     return print_insn_powerpc(memaddr, info, 0, dialect);
 }
 
@@ -5516,7 +5568,7 @@ again:
             continue;
 
         if ((insn & opcode->mask) != opcode->opcode
-            || (opcode->flags & dialect) == 0)
+            || !opcode_is_supported(opcode->flags, dialect))
             continue;
 
         /* Make two passes over the operands.  First see if any of them
@@ -5691,7 +5743,7 @@ again:
             continue;
 
         if ((insn & opcode->mask) != opcode->opcode
-            || (opcode->flags & dialect) == 0)
+            || !opcode_is_supported(opcode->flags, dialect))
             continue;
 
         /* Make two passes over the operands.  First see if any of them

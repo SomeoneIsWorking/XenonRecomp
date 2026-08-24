@@ -16,10 +16,26 @@
  */
 struct ImportVariable
 {
-    std::string name{};     // "__imp__XexExecutableModuleHandle", or empty if the ordinal is unknown
-    std::string library{};  // "xboxkrnl.exe", "xam.xex", ...
+    std::string name{};    // "__imp__XexExecutableModuleHandle", or empty if the ordinal is unknown
+    std::string library{}; // "xboxkrnl.exe", "xam.xex", ...
     uint32_t thunkAddress{};
     uint32_t ordinal{};
+};
+
+enum class ImportKind
+{
+    Variable,
+    Function,
+};
+
+struct ImportSymbol
+{
+    std::string name{};
+    std::string library{};
+    uint32_t thunkAddress{};
+    uint32_t recordAddress{};
+    uint32_t ordinal{};
+    ImportKind kind{};
 };
 
 struct Image
@@ -27,10 +43,12 @@ struct Image
     std::unique_ptr<uint8_t[]> data{};
     size_t base{};
     uint32_t size{};
+    uint32_t capacity{};
 
     size_t entry_point{};
     std::set<Section, SectionComparer> sections{};
     SymbolTable symbols{};
+    std::vector<ImportSymbol> imports{};
     std::vector<ImportVariable> importVariables{};
 
     /**
@@ -41,19 +59,27 @@ struct Image
      * \param flags Section Flags, enum SectionFlags
      * \param data Section data
      */
-    void Map(const std::string_view& name, size_t base, uint32_t size, uint8_t flags, uint8_t* data);
+    void Map(const std::string_view &name, size_t base, uint32_t size, uint8_t flags,
+             uint8_t *data);
 
     /**
      * \param address Virtual Address
      * \return Pointer to image owned data
      */
-    const void* Find(size_t address) const;
+    const void *Find(size_t address) const;
+
+    /**
+     * \brief Resolve a complete guest range inside one mapped section.
+     * \return Pointer to image-owned data, or nullptr when any byte is unmapped.
+     */
+    void *FindRange(size_t address, size_t length);
+    const void *FindRange(size_t address, size_t length) const;
 
     /**
      * \param name Name of section
      * \return Section
      */
-    const Section* Find(const std::string_view& name) const;
+    const Section *Find(const std::string_view &name) const;
 
     /**
      * \brief Parse given data to an image, reallocates with ownership
@@ -61,7 +87,7 @@ struct Image
      * \param size Size of data
      * \return Parsed image
      */
-    static Image ParseImage(const uint8_t* data, size_t size);
+    static Image ParseImage(const uint8_t *data, size_t size);
 };
 
-Image ElfLoadImage(const uint8_t* data, size_t size);
+Image ElfLoadImage(const uint8_t *data, size_t size);

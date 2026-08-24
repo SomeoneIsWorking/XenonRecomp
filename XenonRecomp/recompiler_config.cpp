@@ -69,11 +69,32 @@ void RecompilerConfig::Load(const std::string_view& configFilePath)
             }
         }
 
+        const auto dataRangesNode = main["data_ranges"];
+        if (dataRangesNode)
+        {
+            auto *dataArray = dataRangesNode.as_array();
+            if (dataArray == nullptr)
+                throw std::runtime_error("main.data_ranges must be an array");
+            for (size_t index = 0; index < dataArray->size(); ++index)
+            {
+                auto *range = (*dataArray)[index].as_table();
+                if (range == nullptr)
+                    throw std::runtime_error(
+                        fmt::format("main.data_ranges[{}] must be a table", index));
+                const auto address = (*range)["address"].value<uint32_t>();
+                const auto size = (*range)["size"].value<uint32_t>();
+                if (!address || !size)
+                    throw std::runtime_error(fmt::format(
+                        "main.data_ranges[{}] requires integer address and size", index));
+                dataRanges.push_back({*address, *size});
+            }
+        }
+
         if (!switchTableFilePath.empty())
         {
             toml::table switchToml = toml::parse_file(directoryPath + switchTableFilePath)
 #if !TOML_EXCEPTIONS
-                .table()
+                                         .table()
 #endif
                 ;
             if (auto switchArray = switchToml["switch"].as_array())

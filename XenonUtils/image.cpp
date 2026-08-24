@@ -4,21 +4,52 @@
 #include <cassert>
 #include <cstring>
 
-void Image::Map(const std::string_view& name, size_t base, uint32_t size, uint8_t flags, uint8_t* data)
+void Image::Map(const std::string_view &name, size_t base, uint32_t size, uint8_t flags,
+                uint8_t *data)
 {
-    sections.insert({ std::string(name), this->base + base,
-        size, static_cast<SectionFlags>(flags), data });
+    sections.insert(
+        {std::string(name), this->base + base, size, static_cast<SectionFlags>(flags), data});
 }
 
-const void* Image::Find(size_t address) const
+const void *Image::Find(size_t address) const
 {
-    const auto section = std::prev(sections.upper_bound(address));
-    return section->data + (address - section->base);
+    return FindRange(address, 1);
 }
 
-const Section* Image::Find(const std::string_view& name) const
+void *Image::FindRange(size_t address, size_t length)
 {
-    for (const auto& section : sections)
+    return const_cast<void *>(static_cast<const Image &>(*this).FindRange(address, length));
+}
+
+const void *Image::FindRange(size_t address, size_t length) const
+{
+    if (length == 0 || sections.empty())
+    {
+        return nullptr;
+    }
+
+    auto section = sections.upper_bound(address);
+    if (section == sections.begin())
+    {
+        return nullptr;
+    }
+    --section;
+
+    if (address < section->base)
+    {
+        return nullptr;
+    }
+    const size_t offset = address - section->base;
+    if (offset > section->size || length > section->size - offset)
+    {
+        return nullptr;
+    }
+    return section->data + offset;
+}
+
+const Section *Image::Find(const std::string_view &name) const
+{
+    for (const auto &section : sections)
     {
         if (section.name == name)
         {
@@ -29,8 +60,13 @@ const Section* Image::Find(const std::string_view& name) const
     return nullptr;
 }
 
-Image Image::ParseImage(const uint8_t* data, size_t size)
+Image Image::ParseImage(const uint8_t *data, size_t size)
 {
+    if (data == nullptr || size < 4)
+    {
+        return {};
+    }
+
     if (data[0] == ELFMAG0 && data[1] == ELFMAG1 && data[2] == ELFMAG2 && data[3] == ELFMAG3)
     {
         return ElfLoadImage(data, size);
@@ -43,13 +79,14 @@ Image Image::ParseImage(const uint8_t* data, size_t size)
     return {};
 }
 
-Image ElfLoadImage(const uint8_t* data, size_t size)
+Image ElfLoadImage(const uint8_t *data, size_t size)
 {
-    const auto* header = (elf32_hdr*)data;
+    const auto *header = (elf32_hdr *)data;
     assert(header->e_ident[EI_DATA] == 2);
 
     Image image{};
     image.size = size;
+    image.capacity = size;
     image.data = std::make_unique<uint8_t[]>(size);
     image.entry_point = ByteSwap(header->e_entry);
     memcpy(image.data.get(), data, size);
@@ -59,8 +96,8 @@ Image ElfLoadImage(const uint8_t* data, size_t size)
     const auto numSections = ByteSwap(header->e_shnum);
     const auto numpSections = ByteSwap(header->e_phnum);
 
-    const auto* sections = (elf32_shdr*)(data + ByteSwap(header->e_shoff));
-    const auto* psections = (elf32_phdr*)(data + ByteSwap(header->e_phoff));
+    const auto *sections = (elf32_shdr *)(data + ByteSwap(header->e_shoff));
+    const auto *psections = (elf32_phdr *)(data + ByteSwap(header->e_phoff));
 
     for (size_t i = 0; i < numpSections; i++)
     {
@@ -71,11 +108,12 @@ Image ElfLoadImage(const uint8_t* data, size_t size)
         }
     }
 
-    auto* stringTable = reinterpret_cast<const char*>(data + ByteSwap(sections[stringTableIndex].sh_offset));
+    auto *stringTable =
+        reinterpret_cast<const char *>(data + ByteSwap(sections[stringTableIndex].sh_offset));
 
     for (size_t i = 0; i < numSections; i++)
     {
-        const auto& section = sections[i];
+        const auto &section = sections[i];
         if (section.sh_type == 0)
         {
             continue;
@@ -88,7 +126,7 @@ Image ElfLoadImage(const uint8_t* data, size_t size)
             flags |= SectionFlags_Code;
         }
 
-        auto* name = section.sh_name != 0 ? stringTable + ByteSwap(section.sh_name) : nullptr;
+        auto *name = section.sh_name != 0 ? stringTable + ByteSwap(section.sh_name) : nullptr;
         const auto rva = ByteSwap(section.sh_addr) - image.base;
         const auto size = ByteSwap(section.sh_size);
 

@@ -467,6 +467,8 @@ int print_insn_microblaze       (bfd_vma, disassemble_info*);
 int print_insn_ia64             (bfd_vma, disassemble_info*);
 
 int decode_insn_ppc(bfd_vma, disassemble_info*, ppc_insn*);
+bool ppc_disassembler_is_64_bit(const disassemble_info*);
+void free_ppc_disassembler(disassemble_info*);
 
 #if 0
 /* Fetch the disassembler for a given BFD, if that support is available.  */

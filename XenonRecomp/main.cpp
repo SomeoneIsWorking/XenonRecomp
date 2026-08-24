@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "test_recompiler.h"
 
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
 #ifndef XENON_RECOMP_CONFIG_FILE_PATH
     if (argc < 3)
@@ -11,12 +11,12 @@ int main(int argc, char* argv[])
     }
 #endif
 
-    const char* path = 
-    #ifdef XENON_RECOMP_CONFIG_FILE_PATH
+    const char *path =
+#ifdef XENON_RECOMP_CONFIG_FILE_PATH
         XENON_RECOMP_CONFIG_FILE_PATH
-    #else
+#else
         argv[1]
-    #endif
+#endif
         ;
 
     if (std::filesystem::is_regular_file(path))
@@ -33,7 +33,7 @@ int main(int argc, char* argv[])
             entry->name = "_xstart";
         }
 
-        const char* headerFilePath =
+        const char *headerFilePath =
 #ifdef XENON_RECOMP_HEADER_FILE_PATH
             XENON_RECOMP_HEADER_FILE_PATH
 #else
@@ -45,8 +45,20 @@ int main(int argc, char* argv[])
 
         if (recompiler.unrecognizedInstructionCount != 0)
         {
-            fmt::println("ERROR: {} instruction(s) had no implementation and were replaced with traps.",
+            fmt::println(
+                "ERROR: {} instruction(s) had no implementation and were replaced with traps.",
                 recompiler.unrecognizedInstructionCount);
+        }
+
+        if (recompiler.unreachableSwitchCaseCount != 0)
+        {
+            fmt::println("ERROR: {} switch case target(s) were outside their owning function and "
+                         "were replaced with traps.",
+                         recompiler.unreachableSwitchCaseCount);
+        }
+
+        if (recompiler.HasFatalGaps())
+        {
             return EXIT_FAILURE;
         }
     }
