@@ -426,7 +426,9 @@ void Recompiler::ResolveSwitchFunctionOwnership()
 
 bool Recompiler::Recompile(const Function &fn)
 {
-    const auto codeBlocks = fn.ExecutableBlocks();
+    Function normalizedFunction = fn;
+    normalizedFunction.NormalizeBlocks();
+    const auto codeBlocks = normalizedFunction.ExecutableBlocks();
 
     static std::unordered_set<size_t> labels;
     labels.clear();

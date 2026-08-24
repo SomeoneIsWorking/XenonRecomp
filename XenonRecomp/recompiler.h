@@ -2,6 +2,7 @@
 
 #include "pch.h"
 #include "recompiler_config.h"
+#include <sha256.h>
 
 struct RecompilerLocalVariables
 {
@@ -30,6 +31,8 @@ struct Recompiler
     // Enforce In-order Execution of I/O constant for quick comparison
     static constexpr uint32_t c_eieio = 0xAC06007C;
     Image image;
+    Sha256Digest xexDigest{};
+    Sha256Digest imageDigest{};
     std::vector<Function> functions;
     std::unordered_set<size_t> authoritativeFunctionStarts;
     std::string out;

@@ -22,6 +22,7 @@ FORMATTED = (
     "XenonRecomp/main.cpp",
     "XenonRecomp/recompiler.h",
     "XenonRecomp/recompiler_config.h",
+    "XenonRecomp/recompiler_loader.cpp",
     "XenonRecomp/switch_extent.cpp",
     "XenonRecompTests/binding_emission_test.cpp",
     "XenonRecompTests/binding_link_fixture.h",
@@ -42,8 +43,8 @@ FORMATTED = (
     "XexInspect/main.cpp",
     "XexInspect/pattern_scan.cpp",
     "XexInspect/pattern_scan.h",
-    "XexInspect/sha256.cpp",
-    "XexInspect/sha256.h",
+    "XenonUtils/sha256.cpp",
+    "XenonUtils/sha256.h",
     "XexInspectTests/inspect_tests.cpp",
 )
 
@@ -52,6 +53,7 @@ TIDY_UNITS = (
     "XenonRecomp/function_binding.cpp",
     "XenonRecomp/function_scan.cpp",
     "XenonRecomp/main.cpp",
+    "XenonRecomp/recompiler_loader.cpp",
     "XenonRecomp/switch_extent.cpp",
     "XenonRecompTests/binding_emission_test.cpp",
     "XenonRecompTests/binding_link_generated.cpp",
@@ -66,16 +68,16 @@ TIDY_UNITS = (
     "XexInspect/inspect.cpp",
     "XexInspect/main.cpp",
     "XexInspect/pattern_scan.cpp",
-    "XexInspect/sha256.cpp",
+    "XenonUtils/sha256.cpp",
     "XexInspectTests/inspect_tests.cpp",
 )
 
 RANGED_SOURCES = {
     "XenonRecomp/recompiler.cpp": (
         (1, 7),
-        (199, 272),
-        (753, 768),
-        (1171, 1177),
+        (118, 191),
+        (672, 687),
+        (1090, 1096),
     ),
     "XenonRecomp/recompiler_config.cpp": ((72, 97),),
 }

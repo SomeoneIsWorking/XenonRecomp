@@ -427,6 +427,35 @@ bool TestNestedSwitchOwnershipIsOrderIndependent()
     }
     return true;
 }
+
+bool TestOverlappingAnalysisBlocksEmitEachInstructionOnce()
+{
+    constexpr std::uint32_t kBase = 0x4000;
+    Recompiler recompiler;
+    recompiler.image.base = kBase;
+    recompiler.image.size = 16;
+    recompiler.image.data = std::make_unique<std::uint8_t[]>(16);
+    recompiler.image.Map(".text", 0, 16, SectionFlags_Code, recompiler.image.data.get());
+
+    SetWord(recompiler, kBase, EncodeBranch(kBase, kBase + 8));
+    SetWord(recompiler, kBase + 4, 0x4E800020);
+    SetWord(recompiler, kBase + 8, 0x38630001);
+    SetWord(recompiler, kBase + 12, 0x4E800020);
+
+    Function function{kBase, 16};
+    function.blocks = {{0, 16}, {8, 8}};
+    recompiler.image.symbols.emplace("sub_4000", kBase, 16, Symbol_Function);
+
+    if (!recompiler.Recompile(function))
+    {
+        std::cerr << "overlapping analysis blocks failed to recompile\n";
+        return false;
+    }
+    const std::string_view emitted = recompiler.out;
+    const auto first = emitted.find("loc_4008:");
+    return first != std::string_view::npos &&
+           emitted.find("loc_4008:", first + 1) == std::string_view::npos;
+}
 } // namespace
 
 int main()
@@ -436,7 +465,8 @@ int main()
         !TestFatalGapResultIncludesUnreachableSwitchCases() ||
         !TestInlineSwitchOwnsDisjointCasesAndSkipsTableData() ||
         !TestSwitchLabelsSeedMissingCodeFragments() || !TestInvalidSwitchOwnershipIsRefused() ||
-        !TestNestedSwitchOwnershipIsOrderIndependent())
+        !TestNestedSwitchOwnershipIsOrderIndependent() ||
+        !TestOverlappingAnalysisBlocksEmitEachInstructionOnce())
     {
         return 1;
     }

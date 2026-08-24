@@ -19,6 +19,7 @@ add_executable(XenonRecompInstructionTests
     "../XenonRecomp/function_binding.cpp"
     "../XenonRecomp/function_scan.cpp"
     "../XenonRecomp/recompiler.cpp"
+    "../XenonRecomp/recompiler_loader.cpp"
     "../XenonRecomp/recompiler_config.cpp"
     "../XenonRecomp/switch_extent.cpp")
 

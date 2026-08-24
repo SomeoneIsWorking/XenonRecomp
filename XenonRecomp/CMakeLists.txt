@@ -8,6 +8,7 @@ add_executable(XenonRecomp
     "function_binding.cpp"
     "function_scan.cpp"
     "recompiler.cpp"
+    "recompiler_loader.cpp"
     "switch_extent.cpp"
     "test_recompiler.cpp" 
     "recompiler_config.cpp")

@@ -1,5 +1,7 @@
 project("XenonUtils")
 
+find_package(OpenSSL REQUIRED COMPONENTS Crypto)
+
 add_library(XenonUtils
     "disasm.cpp" 
     "xex.cpp" 
@@ -7,6 +9,7 @@ add_library(XenonUtils
     "xdbf_wrapper.cpp"
     "xex_patcher.cpp"
     "memory_mapped_file.cpp"
+    "sha256.cpp"
     "${THIRDPARTY_ROOT}/libmspack/libmspack/mspack/lzxd.c"
     "${THIRDPARTY_ROOT}/tiny-AES-c/aes.c"
 )
@@ -29,4 +32,5 @@ target_include_directories(XenonUtils
 target_link_libraries(XenonUtils 
     PUBLIC
         disasm
+        OpenSSL::Crypto
 )

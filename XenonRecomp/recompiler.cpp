@@ -4,7 +4,6 @@
 #include "function_binding.h"
 #include "function_scan.h"
 #include <stdexcept>
-#include <xex_patcher.h>
 
 static uint64_t ComputeMask(uint32_t mstart, uint32_t mstop)
 {
@@ -12,89 +11,6 @@ static uint64_t ComputeMask(uint32_t mstart, uint32_t mstop)
     mstop &= 0x3F;
     uint64_t value = (UINT64_MAX >> mstart) ^ ((mstop >= 63) ? 0 : UINT64_MAX >> (mstop + 1));
     return mstart <= mstop ? value : ~value;
-}
-
-bool Recompiler::LoadConfig(const std::string_view& configFilePath)
-{
-    config.Load(configFilePath);
-
-    std::vector<uint8_t> file;
-    if (!config.patchedFilePath.empty())
-        file = LoadFile((config.directoryPath + config.patchedFilePath).c_str());
-
-    if (file.empty())
-    {
-        file = LoadFile((config.directoryPath + config.filePath).c_str());
-
-        if (!config.patchFilePath.empty())
-        {
-            const auto patchFile = LoadFile((config.directoryPath + config.patchFilePath).c_str());
-            if (!patchFile.empty())
-            {
-                std::vector<uint8_t> outBytes;
-                auto result = XexPatcher::apply(file.data(), file.size(), patchFile.data(), patchFile.size(), outBytes, false);
-                if (result == XexPatcher::Result::Success)
-                {
-                    std::exchange(file, outBytes);
-
-                    if (!config.patchedFilePath.empty())
-                    {
-                        std::ofstream stream(config.directoryPath + config.patchedFilePath, std::ios::binary);
-                        if (stream.good())
-                        {
-                            stream.write(reinterpret_cast<const char*>(file.data()), file.size());
-                            stream.close();
-                        }
-                    }
-                }
-                else
-                {
-                    fmt::print("ERROR: Unable to apply the patch file, ");
-
-                    switch (result)
-                    {
-                    case XexPatcher::Result::XexFileUnsupported:
-                        fmt::println("XEX file unsupported");
-                        break;
-
-                    case XexPatcher::Result::XexFileInvalid:
-                        fmt::println("XEX file invalid");
-                        break;
-
-                    case XexPatcher::Result::PatchFileInvalid:
-                        fmt::println("patch file invalid");
-                        break;
-
-                    case XexPatcher::Result::PatchIncompatible:
-                        fmt::println("patch file incompatible");
-                        break;
-
-                    case XexPatcher::Result::PatchFailed:
-                        fmt::println("patch failed");
-                        break;
-
-                    case XexPatcher::Result::PatchUnsupported:
-                        fmt::println("patch unsupported");
-                        break;
-
-                    default:
-                        fmt::println("reason unknown");
-                        break;
-                    }
-
-                    return false;
-                }
-            }
-            else
-            {
-                fmt::println("ERROR: Unable to load the patch file");
-                return false;
-            }
-        }
-    }
-
-    image = Image::ParseImage(file.data(), file.size());
-    return true;
 }
 
 bool Recompiler::Recompile(
@@ -273,17 +189,17 @@ bool Recompiler::Recompile(
     };
 
     auto printSetFlushMode = [&](bool enable)
+    {
+        auto newState = enable ? CSRState::VMX : CSRState::FPU;
+        if (csrState != newState)
         {
-            auto newState = enable ? CSRState::VMX : CSRState::FPU;
-            if (csrState != newState)
-            {
-                auto prefix = enable ? "enable" : "disable";
-                auto suffix = csrState != CSRState::Unknown ? "Unconditional" : "";
-                println("\tctx.fpscr.{}FlushMode{}();", prefix, suffix);
+            auto prefix = enable ? "enable" : "disable";
+            auto suffix = csrState != CSRState::Unknown ? "Unconditional" : "";
+            println("\tctx.fpscr.{}FlushMode{}();", prefix, suffix);
 
-                csrState = newState;
-            }
-        };
+            csrState = newState;
+        }
+    };
 
     auto midAsmHook = config.midAsmHooks.find(base);
 
@@ -2585,6 +2501,9 @@ void Recompiler::Recompile(const std::filesystem::path& headerFilePath)
 
         println("#define PPC_IMAGE_BASE 0x{:X}ull", image.base);
         println("#define PPC_IMAGE_SIZE 0x{:X}ull", image.size);
+        println("#define PPC_IMAGE_ENTRY_POINT 0x{:X}ull", image.entry_point);
+        println("#define PPC_XEX_SHA256 \"{}\"", Sha256Hex(xexDigest));
+        println("#define PPC_IMAGE_SHA256 \"{}\"", Sha256Hex(imageDigest));
         
         // Extract the address of the minimum code segment to store the function table at.
         size_t codeMin = ~0;
