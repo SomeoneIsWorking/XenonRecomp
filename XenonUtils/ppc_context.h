@@ -34,6 +34,11 @@
 
 #define PPC_FUNC_PROLOGUE() base = std::assume_aligned<32>(base)
 
+inline uint16_t PPC_ROTATE_LEFT16(uint16_t value, unsigned int shift)
+{
+    return std::rotl(value, static_cast<int>(shift));
+}
+
 inline uint32_t PPC_ROTATE_LEFT32(uint32_t value, unsigned int shift)
 {
     return std::rotl(value, static_cast<int>(shift));

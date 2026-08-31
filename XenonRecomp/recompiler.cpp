@@ -2182,7 +2182,7 @@ bool Recompiler::Recompile(
     case PPC_INST_VRLH:
         // TODO: vectorize, ensure endianness is correct
         for (size_t i = 0; i < 8; i++)
-            println("\t{}.u16[{}] = __builtin_rotateleft16({}.u16[{}], {}.u8[{}] & 0xF);", v(insn.operands[0]), i, v(insn.operands[1]), i, v(insn.operands[2]), i * 2);
+            println("\t{}.u16[{}] = PPC_ROTATE_LEFT16({}.u16[{}], {}.u8[{}] & 0xF);", v(insn.operands[0]), i, v(insn.operands[1]), i, v(insn.operands[2]), i * 2);
         break;
     case PPC_INST_VRLIMI128:
     {
