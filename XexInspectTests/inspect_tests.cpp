@@ -208,6 +208,28 @@ int main()
         Check(InspectXex(basic, inspection, error) && inspection.imageBytes.size() == ImageSize,
               "valid basic-compression image");
 
+    std::vector<uint8_t> basicWithZeroTail = basic;
+    auto *paddedSecurity =
+        reinterpret_cast<Xex2SecurityInfo *>(basicWithZeroTail.data() + SecurityOffset);
+    constexpr uint32_t PaddedImageSize = ImageSize + 0x80U;
+    paddedSecurity->imageSize = PaddedImageSize;
+    auto *paddedPeSize = reinterpret_cast<uint32_t *>(basicWithZeroTail.data() + HeaderSize + 0x80 +
+                                                      4 + sizeof(FileHeader) + 56);
+    *paddedPeSize = PaddedImageSize;
+    passed &=
+        Check(InspectXex(basicWithZeroTail, inspection, error) &&
+                  inspection.imageBytes.size() == PaddedImageSize &&
+                  std::all_of(inspection.imageBytes.begin() + ImageSize,
+                              inspection.imageBytes.end(), [](uint8_t byte) { return byte == 0; }),
+              "basic-compression image with zero-filled tail");
+
+    std::vector<uint8_t> overflowingBasic = basic;
+    auto *overflowingSecurity =
+        reinterpret_cast<Xex2SecurityInfo *>(overflowingBasic.data() + SecurityOffset);
+    overflowingSecurity->imageSize = ImageSize - 1U;
+    passed &= CheckRefusal(std::move(overflowingBasic), "exceeds the declared image",
+                           "basic-compression output overflow refusal");
+
     std::vector<uint8_t> malformed = xex;
     auto *header = reinterpret_cast<Xex2Header *>(malformed.data());
     header->headerCount = 0xffffffffU;

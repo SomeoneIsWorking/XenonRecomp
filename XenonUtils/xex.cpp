@@ -267,13 +267,13 @@ bool DecompressImage(const ByteView &xex, size_t headerSize, size_t formatOffset
             sourceOffset += dataSize;
             blocks.push_back({dataSize, zeroSize});
         }
-        if (outputOffset != declaredImageSize)
+        if (outputOffset > declaredImageSize)
         {
-            return Refuse(error,
-                          "XEX2 basic-compression blocks do not produce the declared image size");
+            return Refuse(error, "XEX2 basic-compression blocks exceed the declared image size");
         }
 
         result = std::make_unique<uint8_t[]>(declaredImageSize);
+        std::memset(result.get() + outputOffset, 0, declaredImageSize - outputOffset);
         sourceOffset = 0;
         outputOffset = 0;
         for (const BasicBlock &block : blocks)
