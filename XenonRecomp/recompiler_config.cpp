@@ -51,10 +51,15 @@ void RecompilerConfig::Load(const std::string_view& configFilePath)
         {
             for (auto& func : *functionsArray)
             {
-                auto& funcTable = *func.as_table();
-                uint32_t address = *funcTable["address"].value<uint32_t>();
-                uint32_t size = *funcTable["size"].value<uint32_t>();
-                functions.emplace(address, size);
+                const auto* funcTable = func.as_table();
+                if (funcTable == nullptr)
+                    throw std::runtime_error("main.functions entry must be a table");
+                const auto address = (*funcTable)["address"].value<uint32_t>();
+                const auto size = (*funcTable)["size"].value<uint32_t>();
+                if (!address || !size)
+                    throw std::runtime_error(
+                        "main.functions entry requires integer address and size");
+                functions.emplace(*address, *size);
             }
         }
 
@@ -62,10 +67,15 @@ void RecompilerConfig::Load(const std::string_view& configFilePath)
         {
             for (auto& instr : *invalidArray)
             {
-                auto& instrTable = *instr.as_table();
-                uint32_t data = *instrTable["data"].value<uint32_t>();
-                uint32_t size = *instrTable["size"].value<uint32_t>();
-                invalidInstructions.emplace(data, size);
+                const auto* instrTable = instr.as_table();
+                if (instrTable == nullptr)
+                    throw std::runtime_error("main.invalid_instructions entry must be a table");
+                const auto data = (*instrTable)["data"].value<uint32_t>();
+                const auto size = (*instrTable)["size"].value<uint32_t>();
+                if (!data || !size)
+                    throw std::runtime_error(
+                        "main.invalid_instructions entry requires integer data and size");
+                invalidInstructions.emplace(*data, *size);
             }
         }
 
@@ -136,16 +146,16 @@ void RecompilerConfig::Load(const std::string_view& configFilePath)
             midAsmHook.jumpAddressOnTrue = table["jump_address_on_true"].value_or(0u);
             midAsmHook.jumpAddressOnFalse = table["jump_address_on_false"].value_or(0u);
 
-            if ((midAsmHook.ret && midAsmHook.jumpAddress != NULL) ||
-                (midAsmHook.returnOnTrue && midAsmHook.jumpAddressOnTrue != NULL) ||
-                (midAsmHook.returnOnFalse && midAsmHook.jumpAddressOnFalse != NULL))
+            if ((midAsmHook.ret && midAsmHook.jumpAddress != 0) ||
+                (midAsmHook.returnOnTrue && midAsmHook.jumpAddressOnTrue != 0) ||
+                (midAsmHook.returnOnFalse && midAsmHook.jumpAddressOnFalse != 0))
             {
                 fmt::println("{}: can't return and jump at the same time", midAsmHook.name);
             }
 
-            if ((midAsmHook.ret || midAsmHook.jumpAddress != NULL) &&
-                (midAsmHook.returnOnFalse != NULL || midAsmHook.returnOnTrue != NULL ||
-                    midAsmHook.jumpAddressOnFalse != NULL || midAsmHook.jumpAddressOnTrue != NULL))
+            if ((midAsmHook.ret || midAsmHook.jumpAddress != 0) &&
+                (midAsmHook.returnOnFalse || midAsmHook.returnOnTrue ||
+                    midAsmHook.jumpAddressOnFalse != 0 || midAsmHook.jumpAddressOnTrue != 0))
             {
                 fmt::println("{}: can't mix direct and conditional return/jump", midAsmHook.name);
             }

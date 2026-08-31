@@ -464,8 +464,8 @@ bool Recompiler::Recompile(const Function &fn)
             if (midAsmHook != config.midAsmHooks.end())
             {
                 if (midAsmHook->second.returnOnFalse || midAsmHook->second.returnOnTrue ||
-                    midAsmHook->second.jumpAddressOnFalse != NULL ||
-                    midAsmHook->second.jumpAddressOnTrue != NULL)
+                    midAsmHook->second.jumpAddressOnFalse != 0 ||
+                    midAsmHook->second.jumpAddressOnTrue != 0)
                 {
                     print("extern bool ");
                 }
@@ -512,11 +512,11 @@ bool Recompiler::Recompile(const Function &fn)
 
                 println(");\n");
 
-                if (midAsmHook->second.jumpAddress != NULL)
+                if (midAsmHook->second.jumpAddress != 0)
                     labels.emplace(midAsmHook->second.jumpAddress);
-                if (midAsmHook->second.jumpAddressOnTrue != NULL)
+                if (midAsmHook->second.jumpAddressOnTrue != 0)
                     labels.emplace(midAsmHook->second.jumpAddressOnTrue);
-                if (midAsmHook->second.jumpAddressOnFalse != NULL)
+                if (midAsmHook->second.jumpAddressOnFalse != 0)
                     labels.emplace(midAsmHook->second.jumpAddressOnFalse);
             }
         }

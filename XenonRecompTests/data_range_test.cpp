@@ -131,6 +131,14 @@ int main()
             invalid.Load(configPath);
         },
         "config data_ranges table was accepted instead of an array");
+    RequireRefusal(
+        [&]
+        {
+            WriteConfig(configPath, "invalid_instructions = [{ data = 0x1008 }]");
+            RecompilerConfig invalid;
+            invalid.Load(configPath);
+        },
+        "invalid instruction without size was accepted");
 
     std::cout << "data range test passed: runtime and parser contradictions refused\n";
     return EXIT_SUCCESS;
