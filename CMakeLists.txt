@@ -20,10 +20,6 @@ set(XENONRECOMP_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/XenonRecomp)
 
 project ("XenonRecomp-ALL")
 
-if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    message(FATAL_ERROR "XenonRecomp requires the Clang C++ toolchain")
-endif()
-
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(CTest)
