@@ -51,7 +51,7 @@ void TestRecompiler::RecompileTests(const char* srcDirectoryPath, const char* ds
 
             recompiler.println("#define PPC_CONFIG_H_INCLUDED");
             recompiler.println("#include <ppc_context.h>\n");
-            recompiler.println("#define __builtin_debugtrap()\n");
+            recompiler.println("#define PPC_DEBUG_TRAP()\n");
 
             for (auto& fn : recompiler.functions)
             {

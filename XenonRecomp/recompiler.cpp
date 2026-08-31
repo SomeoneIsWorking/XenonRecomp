@@ -396,7 +396,7 @@ bool Recompiler::Recompile(
                     // A bare return here silently skips whatever the case did.
                     // Trap instead, so an unreachable target can never be
                     // mistaken for a correctly recompiled one.
-                    println("\t\t__builtin_debugtrap(); // unreachable switch target 0x{:X}", label);
+                    println("\t\tPPC_DEBUG_TRAP(); // unreachable switch target 0x{:X}", label);
                     fmt::println(
                         "ERROR: Switch case at {:X} is trying to jump outside function: {:X}", base, label);
                     println("\t\treturn;");
@@ -416,7 +416,7 @@ bool Recompiler::Recompile(
             // outside the executable. An index the analyser did not account for
             // is a real gap, so it stops here and says which one.
             println("\tdefault:");
-            println("\t\t__builtin_debugtrap(); // switch index outside the recovered table");
+            println("\t\tPPC_DEBUG_TRAP(); // switch index outside the recovered table");
             println("\t\treturn;");
             println("\t}}");
 
@@ -485,7 +485,7 @@ bool Recompiler::Recompile(
         break;
 
     case PPC_INST_BLRL:
-        println("__builtin_debugtrap();");
+        println("PPC_DEBUG_TRAP();");
         break;
 
     case PPC_INST_BLTLR:
@@ -1778,7 +1778,7 @@ bool Recompiler::Recompile(
         break;
     case PPC_INST_VCMPBFP:
     case PPC_INST_VCMPBFP128:
-        println("\t__builtin_debugtrap();");
+        println("\tPPC_DEBUG_TRAP();");
         break;
 
     case PPC_INST_VCMPEQFP:
@@ -2097,7 +2097,7 @@ bool Recompiler::Recompile(
             break;
 
         default:
-            println("\t__builtin_debugtrap();");
+            println("\tPPC_DEBUG_TRAP();");
             break;
         }
         break;
@@ -2391,7 +2391,7 @@ bool Recompiler::Recompile(
             break;
 
         default:
-            println("\t__builtin_debugtrap();");
+            println("\tPPC_DEBUG_TRAP();");
             break;
         }
         break;
@@ -2479,7 +2479,7 @@ void Recompiler::Recompile(const std::filesystem::path& headerFilePath)
 
         println("#ifndef PPC_CONFIG_H_INCLUDED");
         println("#define PPC_CONFIG_H_INCLUDED\n");
-
+        println("#if defined(_MSC_VER)\n#include <intrin.h>\n#define PPC_DEBUG_TRAP() __debugbreak()\n#else\n#define PPC_DEBUG_TRAP() __builtin_trap()\n#endif\n");
         if (config.skipLr)
             println("#define PPC_CONFIG_SKIP_LR");      
         if (config.ctrAsLocalVariable)

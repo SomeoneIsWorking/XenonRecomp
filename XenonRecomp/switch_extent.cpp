@@ -592,7 +592,7 @@ bool Recompiler::Recompile(const Function &fn)
                     // Emitting nothing here would let the following instructions run
                     // against stale registers and silently produce wrong results, so
                     // trap instead and make the gap fail loudly at runtime.
-                    println("\t__builtin_debugtrap(); // unrecognized instruction: {}",
+                    println("\tPPC_DEBUG_TRAP(); // unrecognized instruction: {}",
                             insn.opcode->name);
                     ++unrecognizedInstructionCount;
                     allRecompiled = false;

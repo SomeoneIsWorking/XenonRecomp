@@ -309,6 +309,9 @@ bool TestInlineSwitchOwnsDisjointCasesAndSkipsTableData()
     return allRecognized && recompiler.unreachableSwitchCaseCount == 0 &&
            Contains(recompiler.out, "case 0:\n\t\tgoto loc_2018;") &&
            Contains(recompiler.out, "case 3:\n\t\tgoto loc_2024;") &&
+           Contains(recompiler.out,
+                    "PPC_DEBUG_TRAP(); // switch index outside the recovered table") &&
+           Omits(recompiler.out, "__builtin_debugtrap") &&
            Contains(recompiler.out, "goto loc_2040;") && Contains(recompiler.out, "loc_2040:") &&
            Omits(recompiler.out, "ctx.r3.s64 = ctx.r3.s64 + 1;");
 }
