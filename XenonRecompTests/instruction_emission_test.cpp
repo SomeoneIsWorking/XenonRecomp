@@ -211,6 +211,17 @@ bool TestLhzxDoesNotDecodeOrEmitAsLhbrx()
            Contains(emitted, "ctx.r7.u64 = PPC_LOAD_U16(ctx.r8.u32 + ctx.r9.u32);");
 }
 
+bool TestRlwinmUsesPortableRotateHelper()
+{
+    const auto encoded = Encode(0x5483283CU); // rlwinm r3,r4,5,0,30
+    ppc_insn instruction{};
+    const auto emitted = Emit(encoded, Function{kFunctionBase, 4}, instruction);
+
+    return instruction.opcode != nullptr && instruction.opcode->id == PPC_INST_RLWINM &&
+           Contains(emitted, "PPC_ROTATE_LEFT64(ctx.r4.u32 | (ctx.r4.u64 << 32), 5)") &&
+           Omits(emitted, "__builtin_rotateleft");
+}
+
 bool TestBsoDecoderAndEmission()
 {
     constexpr std::uint32_t kBranchIfTrue = 12;
@@ -461,8 +472,8 @@ bool TestOverlappingAnalysisBlocksEmitEachInstructionOnce()
 int main()
 {
     if (!TestLhbrxDecoderAndEmission() || !TestLhzxDoesNotDecodeOrEmitAsLhbrx() ||
-        !TestBsoDecoderAndEmission() || !TestBnsDoesNotDecodeOrEmitAsBso() ||
-        !TestFatalGapResultIncludesUnreachableSwitchCases() ||
+        !TestRlwinmUsesPortableRotateHelper() || !TestBsoDecoderAndEmission() ||
+        !TestBnsDoesNotDecodeOrEmitAsBso() || !TestFatalGapResultIncludesUnreachableSwitchCases() ||
         !TestInlineSwitchOwnsDisjointCasesAndSkipsTableData() ||
         !TestSwitchLabelsSeedMissingCodeFragments() || !TestInvalidSwitchOwnershipIsRefused() ||
         !TestNestedSwitchOwnershipIsOrderIndependent() ||

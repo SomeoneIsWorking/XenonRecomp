@@ -1218,43 +1218,43 @@ bool Recompiler::Recompile(
         break;
 
     case PPC_INST_RLDICL:
-        println("\t{}.u64 = __builtin_rotateleft64({}.u64, {}) & 0x{:X};", r(insn.operands[0]), r(insn.operands[1]), insn.operands[2], ComputeMask(insn.operands[3], 63));
+        println("\t{}.u64 = PPC_ROTATE_LEFT64({}.u64, {}) & 0x{:X};", r(insn.operands[0]), r(insn.operands[1]), insn.operands[2], ComputeMask(insn.operands[3], 63));
         break;
 
     case PPC_INST_RLDICR:
-        println("\t{}.u64 = __builtin_rotateleft64({}.u64, {}) & 0x{:X};", r(insn.operands[0]), r(insn.operands[1]), insn.operands[2], ComputeMask(0, insn.operands[3]));
+        println("\t{}.u64 = PPC_ROTATE_LEFT64({}.u64, {}) & 0x{:X};", r(insn.operands[0]), r(insn.operands[1]), insn.operands[2], ComputeMask(0, insn.operands[3]));
         break;
 
     case PPC_INST_RLDIMI:
     {
         const uint64_t mask = ComputeMask(insn.operands[3], ~insn.operands[2]);
-        println("\t{}.u64 = (__builtin_rotateleft64({}.u64, {}) & 0x{:X}) | ({}.u64 & 0x{:X});", r(insn.operands[0]), r(insn.operands[1]), insn.operands[2], mask, r(insn.operands[0]), ~mask);
+        println("\t{}.u64 = (PPC_ROTATE_LEFT64({}.u64, {}) & 0x{:X}) | ({}.u64 & 0x{:X});", r(insn.operands[0]), r(insn.operands[1]), insn.operands[2], mask, r(insn.operands[0]), ~mask);
         break;
     }
 
     case PPC_INST_RLWIMI:
     {
         const uint64_t mask = ComputeMask(insn.operands[3] + 32, insn.operands[4] + 32);
-        println("\t{}.u64 = (__builtin_rotateleft32({}.u32, {}) & 0x{:X}) | ({}.u64 & 0x{:X});", r(insn.operands[0]), r(insn.operands[1]), insn.operands[2], mask, r(insn.operands[0]), ~mask);
+        println("\t{}.u64 = (PPC_ROTATE_LEFT32({}.u32, {}) & 0x{:X}) | ({}.u64 & 0x{:X});", r(insn.operands[0]), r(insn.operands[1]), insn.operands[2], mask, r(insn.operands[0]), ~mask);
         break;
     }
 
     case PPC_INST_RLWINM:
-        println("\t{}.u64 = __builtin_rotateleft64({}.u32 | ({}.u64 << 32), {}) & 0x{:X};", r(insn.operands[0]), r(insn.operands[1]), r(insn.operands[1]), insn.operands[2], ComputeMask(insn.operands[3] + 32, insn.operands[4] + 32));
+        println("\t{}.u64 = PPC_ROTATE_LEFT64({}.u32 | ({}.u64 << 32), {}) & 0x{:X};", r(insn.operands[0]), r(insn.operands[1]), r(insn.operands[1]), insn.operands[2], ComputeMask(insn.operands[3] + 32, insn.operands[4] + 32));
         if (strchr(insn.opcode->name, '.'))
             println("\t{}.compare<int32_t>({}.s32, 0, {});", cr(0), r(insn.operands[0]), xer());
         break;
 
     case PPC_INST_ROTLDI:
-        println("\t{}.u64 = __builtin_rotateleft64({}.u64, {});", r(insn.operands[0]), r(insn.operands[1]), insn.operands[2]);
+        println("\t{}.u64 = PPC_ROTATE_LEFT64({}.u64, {});", r(insn.operands[0]), r(insn.operands[1]), insn.operands[2]);
         break;
 
     case PPC_INST_ROTLW:
-        println("\t{}.u64 = __builtin_rotateleft32({}.u32, {}.u8 & 0x1F);", r(insn.operands[0]), r(insn.operands[1]), r(insn.operands[2]));
+        println("\t{}.u64 = PPC_ROTATE_LEFT32({}.u32, {}.u8 & 0x1F);", r(insn.operands[0]), r(insn.operands[1]), r(insn.operands[2]));
         break;
 
     case PPC_INST_ROTLWI:
-        println("\t{}.u64 = __builtin_rotateleft32({}.u32, {});", r(insn.operands[0]), r(insn.operands[1]), insn.operands[2]);
+        println("\t{}.u64 = PPC_ROTATE_LEFT32({}.u32, {});", r(insn.operands[0]), r(insn.operands[1]), insn.operands[2]);
         if (strchr(insn.opcode->name, '.'))
             println("\t{}.compare<int32_t>({}.s32, 0, {});", cr(0), r(insn.operands[0]), xer());
         break;

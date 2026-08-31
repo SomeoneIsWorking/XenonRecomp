@@ -5,6 +5,7 @@
 #error "ppc_config.h must be included before ppc_context.h"
 #endif
 
+#include <bit>
 #include <chrono>
 #include <climits>
 #include <cmath>
@@ -12,6 +13,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <memory>
 
 #include <x86/avx.h>
 #include <x86/sse.h>
@@ -30,7 +32,17 @@
 #define PPC_EXTERN_FUNC(x) extern PPC_FUNC(x)
 #define PPC_WEAK_FUNC(x) __attribute__((weak,noinline)) PPC_FUNC(x)
 
-#define PPC_FUNC_PROLOGUE() __builtin_assume(((size_t)base & 0x1F) == 0)
+#define PPC_FUNC_PROLOGUE() base = std::assume_aligned<32>(base)
+
+inline uint32_t PPC_ROTATE_LEFT32(uint32_t value, unsigned int shift)
+{
+    return std::rotl(value, static_cast<int>(shift));
+}
+
+inline uint64_t PPC_ROTATE_LEFT64(uint64_t value, unsigned int shift)
+{
+    return std::rotl(value, static_cast<int>(shift));
+}
 
 #ifndef PPC_LOAD_U8
 #define PPC_LOAD_U8(x) *(volatile uint8_t*)(base + (x))
